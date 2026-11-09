@@ -17,10 +17,27 @@
   </nav>
   <div class="gebruiker">
     <span>{{ g.gebruiker.naam }} ({{ g.gebruiker.rol }})</span>
+    <button type="button" class="btn klein" id="thema-knop" title="Wissel tussen licht en donker thema" aria-label="Wissel thema">🌓</button>
     <a class="btn klein" href="{{ url_for('uitloggen') }}">Wissel van gebruiker</a>
   </div>
   {% endif %}
 </header>
+<script>
+  (function () {
+    var wortel = document.documentElement;
+    var knop = document.getElementById('thema-knop');
+    function zet(licht) {
+      wortel.classList.toggle('donker', !licht);
+      try { localStorage.setItem('thema', licht ? 'licht' : 'donker'); } catch (e) {}
+    }
+    var voorkeur;
+    try { voorkeur = localStorage.getItem('thema'); } catch (e) {}
+    if (voorkeur === 'donker') zet(false);
+    else if (voorkeur === 'licht') zet(true);
+    else zet(!window.matchMedia('(prefers-color-scheme: dark)').matches);
+    knop.addEventListener('click', function () { zet(wortel.classList.contains('donker')); });
+  })();
+</script>
 <main>
   {% with berichten = get_flashed_messages() %}
     {% for b in berichten %}<div class="flash">{{ b }}</div>{% endfor %}

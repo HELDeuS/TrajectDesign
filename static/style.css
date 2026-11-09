@@ -1,8 +1,32 @@
 :root {
   --accent: #0b5cad;
+  --accent-tekst: #ffffff;
   --bg: #f4f6f8;
   --kaart: #ffffff;
   --tekst: #1d2733;
+  --rand: #dde3ea;
+  --rand-invoer: #b9c3cf;
+  --meta: #5a6773;
+  --kop: #eef2f6;
+  --pijl: #9aa4af;
+  --bezig-achter: #fdf7e8;
+  --behaald-achter: #f0f9f1;
+  --geblokkeerd-achter: #eef0f3;
+}
+html.donker {
+  --accent: #6ea8dd;
+  --accent-tekst: #0d1b26;
+  --bg: #141a21;
+  --kaart: #1d2733;
+  --tekst: #e6ecf2;
+  --rand: #31404f;
+  --rand-invoer: #3e4f60;
+  --meta: #a3b1bd;
+  --kop: #223141;
+  --pijl: #6d7d8c;
+  --bezig-achter: #33290f;
+  --behaald-achter: #122616;
+  --geblokkeerd-achter: #262f38;
 }
 * { box-sizing: border-box; }
 body {
@@ -16,10 +40,10 @@ header {
   align-items: center;
   gap: 1.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-tekst);
   padding: 0.6rem 1.2rem;
 }
-header a { color: #fff; text-decoration: none; }
+header a { color: var(--accent-tekst); text-decoration: none; }
 header .brand a { font-weight: 700; font-size: 1.1rem; }
 header nav { display: flex; gap: 1rem; }
 header .gebruiker { margin-left: auto; display: flex; align-items: center; gap: 0.8rem; font-size: 0.9rem; }
@@ -31,7 +55,7 @@ a { color: var(--accent); }
 
 .kaart {
   background: var(--kaart);
-  border: 1px solid #dde3ea;
+  border: 1px solid var(--rand);
   border-radius: 8px;
   padding: 1rem 1.2rem;
   margin: 1rem 0;
@@ -42,15 +66,17 @@ a { color: var(--accent); }
   width: 100%;
   max-width: 420px;
   padding: 0.4rem 0.5rem;
-  border: 1px solid #b9c3cf;
+  border: 1px solid var(--rand-invoer);
   border-radius: 4px;
   font-size: 1rem;
+  background: var(--bg);
+  color: var(--tekst);
 }
 
 button, .btn {
   display: inline-block;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-tekst);
   border: none;
   border-radius: 4px;
   padding: 0.45rem 0.9rem;
@@ -73,12 +99,12 @@ button.gevaar.klein { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
 .tabel th, .tabel td {
   text-align: left;
   padding: 0.5rem 0.7rem;
-  border-bottom: 1px solid #e3e8ee;
+  border-bottom: 1px solid var(--rand);
   vertical-align: top;
 }
-.tabel th { background: #eef2f6; }
+.tabel th { background: var(--kop); }
 
-.meta { color: #5a6773; font-size: 0.88rem; }
+.meta { color: var(--meta); font-size: 0.88rem; }
 .waarschuwing { color: #b3261e; font-weight: 600; }
 .flash {
   background: #fff3cd;
@@ -87,6 +113,7 @@ button.gevaar.klein { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
   padding: 0.6rem 1rem;
   margin-bottom: 1rem;
 }
+html.donker .flash { background: #4a3a0d; border-color: #7a6420; color: #f5e9c8; }
 .inline { display: inline; }
 .inline-form { display: flex; gap: 0.8rem; align-items: end; flex-wrap: wrap; }
 .inline-form label { font-size: 0.9rem; }
@@ -95,27 +122,29 @@ button.gevaar.klein { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
 
 .graf-container { overflow-x: auto; padding: 0.5rem; }
 .graf-svg { display: block; min-width: 320px; }
-.graf-pijl { stroke: #9aa4af; stroke-width: 2; }
-.graf-rect { fill: #ffffff; stroke: #b9c3cf; stroke-width: 2; }
+.graf-pijl { stroke: var(--pijl); stroke-width: 2; }
+.graf-rect { fill: var(--kaart); stroke: var(--rand-invoer); stroke-width: 2; }
 .graf-rect:hover { stroke: var(--accent); }
 .graf-node { cursor: pointer; text-decoration: none; }
-.graf-titel { font-size: 15px; font-weight: 700; fill: #1d2733; }
-.graf-sub { font-size: 12px; fill: #5a6773; }
-.graf-waarschuwing { font-size: 12px; font-weight: 700; fill: #b3261e; }
-.graf-rect-status { fill: #ffffff; stroke: #b9c3cf; stroke-width: 2; }
-.graf-node.status-behaald .graf-rect-status { stroke: #2e7d32; fill: #f0f9f1; }
-.graf-node.status-bezig .graf-rect-status { stroke: #f0a500; fill: #fdf7e8; }
-.graf-node.status-geblokkeerd .graf-rect-status { stroke: #9aa4af; fill: #eef0f3; }
-.graf-node.status-niet_gestart .graf-rect-status { stroke: #b9c3cf; fill: #ffffff; }
+.graf-titel { font-size: 15px; font-weight: 700; fill: var(--tekst); }
+.graf-sub { font-size: 12px; fill: var(--meta); }
+.graf-waarschuwing { font-size: 12px; font-weight: 700; fill: #e2554b; }
+.graf-rect-status { fill: var(--kaart); stroke: var(--rand-invoer); stroke-width: 2; }
+.graf-node.status-behaald .graf-rect-status { stroke: #2e7d32; fill: var(--behaald-achter); }
+.graf-node.status-bezig .graf-rect-status { stroke: #f0a500; fill: var(--bezig-achter); }
+.graf-node.status-geblokkeerd .graf-rect-status { stroke: var(--pijl); fill: var(--geblokkeerd-achter); }
+.graf-node.status-niet_gestart .graf-rect-status { stroke: var(--rand-invoer); fill: var(--kaart); }
 .graf-status-behaald { fill: #2e7d32; font-weight: 700; }
 .graf-status-bezig { fill: #9c6f00; font-weight: 700; }
-.graf-status-geblokkeerd { fill: #5a6773; font-weight: 700; }
-.graf-status-niet_gestart { fill: #5a6773; }
+.graf-status-geblokkeerd { fill: var(--meta); font-weight: 700; }
+.graf-status-niet_gestart { fill: var(--meta); }
+html.donker .graf-status-behaald { fill: #8fd694; }
+html.donker .graf-status-bezig { fill: #f0c96a; }
 
 .voortgangskaart { max-width: 560px; }
 .voortgangsbalk {
   height: 18px;
-  background: #e3e8ee;
+  background: var(--geblokkeerd-achter);
   border-radius: 10px;
   overflow: hidden;
   margin: 0.5rem 0;
@@ -144,16 +173,16 @@ details.kaart > form { margin-top: 0.8rem; }
   font-weight: 600;
   border-radius: 12px;
   padding: 0.1rem 0.6rem;
-  background: #e3e8ee;
-  color: #5a6773;
+  background: var(--geblokkeerd-achter);
+  color: var(--meta);
 }
 .status.s-behaald { background: #d8f0d9; color: #2e7d32; }
 .status.s-bezig { background: #fdeec3; color: #9c6f00; }
-.status.s-geblokkeerd { background: #e3e8ee; color: #5a6773; }
-.status.s-niet { background: #e3e8ee; color: #5a6773; }
+html.donker .status.s-behaald { background: #1d4222; color: #8fd694; }
+html.donker .status.s-bezig { background: #4a3a0d; color: #f0c96a; }
 
 .product-blok {
-  border: 1px solid #e3e8ee;
+  border: 1px solid var(--rand);
   border-radius: 6px;
   padding: 0.8rem;
   margin: 0.8rem 0;
