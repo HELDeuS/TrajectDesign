@@ -46,9 +46,20 @@ gunicorn --bind 0.0.0.0:5000 app:app
 
 Zorg dat de poort openstaat in de firewall (`sudo ufw allow 5000/tcp`) en dat verkeer van buiten alleen via een beveiligde route (bijv. een reverse proxy met HTTPS) loopt.
 
+## Tests
+
+De kernregels zijn gedekt door automatische tests (behaalregels, afhankelijkheden, SBU-waarschuwing, koppelingen, persistentie):
+
+```bash
+python test_regels.py
+```
+
+De tests gebruiken een tijdelijke database en raken de eigen `traject.db` niet aan.
+
 ## Opbouw
 
 - `app.py` – Flask-applicatie: routes, sessie/rollen en bedrijfslogica (modulestatus, behaalregels, SBU-controle).
+- `test_regels.py` – automatische tests voor de bedrijfsregels.
 - `schema.sql` – datamodel (SQLite).
 - `templates/` – Jinja2-templates (Nederlandstalige UI).
 - `static/style.css` – styling.
