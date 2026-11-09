@@ -711,6 +711,5 @@ def student_traject_detail(traject_id):
 
 
 if __name__ == "__main__":
-    if not os.path.exists(DB_PATH):
-        init_db(seed=True)
+    init_db(seed=not os.path.exists(DB_PATH))
     app.run(host=os.environ.get("HOST", "0.0.0.0"), debug=bool(os.environ.get("DEBUG")), port=int(os.environ.get("PORT", 5000)))
