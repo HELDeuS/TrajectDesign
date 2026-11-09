@@ -66,7 +66,9 @@ De tests gebruiken een tijdelijke database en raken de eigen `traject.db` niet a
 
 ## Datamodel (kern)
 
-- `traject` → `module` (max SBU, behaalregel, drempelpercentage, voldoende-cijfer, afhankelijkheidmodus)
+- `traject` → `module` (duur in weken, standaard 10; max SBU, behaalregel, drempelpercentage, voldoende-cijfer, afhankelijkheidmodus)
+- `module` → `onderwijsproduct`: samenhangende verzameling lessen (bijv. "Linux Server 1")
+- `onderwijsproduct` → `les`: afzonderlijke lessen met SBU; de SBU van een product en de som van een module worden berekend uit de lessen
 - `module_afhankelijkheid`: vereiste voorgangers van een module
 - `module_doel` / `product_doel`: leerdoelen en -uitkomsten op module- en productniveau, gekoppeld via `product_doel.module_doel_id`
 - `beoordeling`: cijfer per student per onderwijsproduct

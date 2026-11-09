@@ -8,6 +8,7 @@
   <h2>Modulegegevens</h2>
   <label>Naam <input name="naam" value="{{ module.naam }}" required></label>
   <label>Omschrijving <input name="omschrijving" value="{{ module.omschrijving }}"></label>
+  <label>Duur (weken) <input name="duur_weken" type="number" min="1" value="{{ module.duur_weken }}"></label>
   <label>Max. SBU <input name="max_sbu" type="number" step="0.5" min="0" value="{{ module.max_sbu }}"></label>
   <label>Behaalregel
     <select name="behaalregel">
@@ -29,7 +30,7 @@
 
 <div class="kaart">
   <h2>SBU</h2>
-  <p>Som van onderwijsproducten: <strong>{{ sbu_totaal }}</strong> van maximaal <strong>{{ module.max_sbu }}</strong> SBU.</p>
+  <p>Som van alle lessen: <strong>{{ sbu_totaal }}</strong> van maximaal <strong>{{ module.max_sbu }}</strong> SBU.</p>
   {% if sbu_overschreden %}<p class="waarschuwing">⚠ De onderwijsproducten overschrijden de maximale SBU van deze module.</p>{% endif %}
 </div>
 
@@ -73,10 +74,11 @@
 
 <h2>Onderwijsproducten</h2>
 <table class="tabel">
-  <tr><th>Naam</th><th>SBU</th><th>Doelen</th><th></th></tr>
+  <tr><th>Naam</th><th>Lessen</th><th>SBU</th><th>Doelen</th><th></th></tr>
   {% for p in producten %}
   <tr>
     <td><a href="{{ url_for('product_detail', product_id=p.id) }}">{{ p.naam }}</a></td>
+    <td>{{ p.aantal_lessen }}</td>
     <td>{{ p.sbu }}</td>
     <td>{{ p.doelen | length }}</td>
     <td>
@@ -94,9 +96,9 @@
 {% if g.gebruiker.rol == 'ontwerper' %}
 <form method="post" action="{{ url_for('product_nieuw', module_id=module.id) }}" class="kaart">
   <h3>Onderwijsproduct toevoegen</h3>
+  <p class="meta">Een onderwijsproduct is een samenhangende verzameling lessen (bijv. "Linux Server 1"). Lessen voeg je toe op de pagina van het onderwijsproduct.</p>
   <label>Naam <input name="naam" required></label>
   <label>Omschrijving <input name="omschrijving"></label>
-  <label>SBU <input name="sbu" type="number" step="0.5" min="0" value="0"></label>
   <button type="submit">Toevoegen</button>
 </form>
 {% endif %}

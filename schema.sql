@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS module (
   traject_id INTEGER NOT NULL REFERENCES traject(id) ON DELETE CASCADE,
   naam TEXT NOT NULL,
   omschrijving TEXT DEFAULT '',
+  duur_weken INTEGER NOT NULL DEFAULT 10,
   max_sbu REAL NOT NULL DEFAULT 0,
   behaalregel TEXT NOT NULL DEFAULT 'percentage' CHECK (behaalregel IN ('percentage','doelen')),
   drempel_percentage INTEGER NOT NULL DEFAULT 80,
@@ -41,6 +42,13 @@ CREATE TABLE IF NOT EXISTS module_doel (
 CREATE TABLE IF NOT EXISTS onderwijsproduct (
   id INTEGER PRIMARY KEY,
   module_id INTEGER NOT NULL REFERENCES module(id) ON DELETE CASCADE,
+  naam TEXT NOT NULL,
+  omschrijving TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS les (
+  id INTEGER PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES onderwijsproduct(id) ON DELETE CASCADE,
   naam TEXT NOT NULL,
   omschrijving TEXT DEFAULT '',
   sbu REAL NOT NULL DEFAULT 0

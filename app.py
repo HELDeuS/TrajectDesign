@@ -34,10 +34,26 @@ def init_db(seed=False):
     db = sqlite3.connect(DB_PATH)
     with open(os.path.join(APP_DIR, "schema.sql"), encoding="utf-8") as f:
         db.executescript(f.read())
+    _migrate(db)
     if seed:
         _seed(db)
     db.commit()
     db.close()
+
+
+def _migrate(db):
+    kolommen = {r[1] for r in db.execute("PRAGMA table_info(module)")}
+    if "duur_weken" not in kolommen:
+        db.execute("ALTER TABLE module ADD COLUMN duur_weken INTEGER NOT NULL DEFAULT 10")
+    product_kolommen = {r[1] for r in db.execute("PRAGMA table_info(onderwijsproduct)")}
+    if "sbu" in product_kolommen:
+        producten = db.execute("SELECT id, sbu FROM onderwijsproduct WHERE sbu > 0").fetchall()
+        for pid, sbu in producten:
+            heeft_les = db.execute("SELECT 1 FROM les WHERE product_id = ?", (pid,)).fetchone()
+            if not heeft_les:
+                db.execute("INSERT INTO les (product_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
+                           (pid, "Lessen (overgezet)", "Overgenomen van de oude SBU-opgave", sbu))
+        db.execute("UPDATE onderwijsproduct SET sbu = 0")
 
 
 def _seed(db):
@@ -62,11 +78,11 @@ def _seed(db):
         (traject_id,),
     )
 
-    def add_module(naam, omschrijving, max_sbu, behaalregel, drempel, modus):
+    def add_module(naam, omschrijving, max_sbu, behaalregel, drempel, modus, weken=10):
         cur = db.execute(
-            "INSERT INTO module (traject_id, naam, omschrijving, max_sbu, behaalregel, drempel_percentage, afhankelijkheid_modus) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (traject_id, naam, omschrijving, max_sbu, behaalregel, drempel, modus),
+            "INSERT INTO module (traject_id, naam, omschrijving, duur_weken, max_sbu, behaalregel, drempel_percentage, afhankelijkheid_modus) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (traject_id, naam, omschrijving, weken, max_sbu, behaalregel, drempel, modus),
         )
         return cur.lastrowid
 
@@ -99,18 +115,21 @@ def _seed(db):
         (m3, "leeruitkomst", "De student levert een werkende webapplicatie op"),
     )
 
-    p1 = db.execute(
-        "INSERT INTO onderwijsproduct (module_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
-        (m1, "Les 1: variabelen en types", "Inleiding met opdrachten", 10),
-    ).lastrowid
-    p2 = db.execute(
-        "INSERT INTO onderwijsproduct (module_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
-        (m1, "Les 2: condities en loops", "Praktijkopdracht", 15),
-    ).lastrowid
-    p3 = db.execute(
-        "INSERT INTO onderwijsproduct (module_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
-        (m1, "Project: consoleapplicatie", "Afsluitend project", 25),
-    ).lastrowid
+    def add_product(module_id, naam, omschrijving, lessen):
+        cur = db.execute(
+            "INSERT INTO onderwijsproduct (module_id, naam, omschrijving) VALUES (?,?,?)",
+            (module_id, naam, omschrijving),
+        )
+        pid = cur.lastrowid
+        for les_naam, les_sbu in lessen:
+            db.execute("INSERT INTO les (product_id, naam, sbu) VALUES (?,?,?)", (pid, les_naam, les_sbu))
+        return pid
+
+    p1 = add_product(m1, "Linux Server 1", "Inleiding Linux-serverbeheer",
+                    [("Les 1: installatie", 4), ("Les 2: bestandssysteem", 6)])
+    p2 = add_product(m1, "Programmeren 1", "Grondslagen van programmeren",
+                    [("Les 1: variabelen en types", 8), ("Les 2: condities en loops", 7)])
+    p3 = add_product(m1, "Project: consoleapplicatie", "Afsluitend project", [("Projectbegeleiding", 25)])
     db.execute(
         "INSERT INTO product_doel (product_id, soort, omschrijving, module_doel_id) VALUES (?,?,?,?)",
         (p1, "leerdoel", "De student benoemt datatypes correct", md1),
@@ -197,12 +216,19 @@ STATUS_LABEL = {
 
 
 def module_sbu_info(module_id):
-    """Som van SBU van onderwijsproducten en max SBU van de module."""
+    """Som van SBU van alle lessen en max SBU van de module."""
     max_sbu = query("SELECT max_sbu FROM module WHERE id = ?", (module_id,), one=True)["max_sbu"]
     totaal = query(
-        "SELECT COALESCE(SUM(sbu), 0) AS s FROM onderwijsproduct WHERE module_id = ?", (module_id,), one=True
+        "SELECT COALESCE(SUM(l.sbu), 0) AS s FROM les l "
+        "JOIN onderwijsproduct p ON p.id = l.product_id WHERE p.module_id = ?",
+        (module_id,), one=True,
     )["s"]
     return totaal, max_sbu, totaal > max_sbu
+
+
+def product_sbu(product_id):
+    """Som van SBU van de lessen van een onderwijsproduct."""
+    return query("SELECT COALESCE(SUM(sbu), 0) AS s FROM les WHERE product_id = ?", (product_id,), one=True)["s"]
 
 
 def traject_graf(traject_id, student_id=None):
@@ -360,9 +386,10 @@ def module_nieuw(traject_id):
         flash("Vul een modulenaam in.")
         return redirect(url_for("traject_detail", traject_id=traject_id))
     m_id = execute(
-        "INSERT INTO module (traject_id, naam, omschrijving, max_sbu, behaalregel, drempel_percentage, voldoende_cijfer, afhankelijkheid_modus) "
-        "VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO module (traject_id, naam, omschrijving, duur_weken, max_sbu, behaalregel, drempel_percentage, voldoende_cijfer, afhankelijkheid_modus) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
         (traject_id, naam, request.form.get("omschrijving", "").strip(),
+         request.form.get("duur_weken", 10, type=int),
          request.form.get("max_sbu", 0, type=float),
          request.form.get("behaalregel", "percentage"),
          request.form.get("drempel_percentage", 80, type=int),
@@ -385,6 +412,8 @@ def module_detail(module_id):
     for p in producten:
         p_doelen = query("SELECT * FROM product_doel WHERE product_id = ? ORDER BY soort, omschrijving", (p["id"],))
         p["doelen"] = p_doelen
+        p["sbu"] = product_sbu(p["id"])
+        p["aantal_lessen"] = query("SELECT COUNT(*) AS c FROM les WHERE product_id = ?", (p["id"],), one=True)["c"]
     afh = query(
         "SELECT m.* FROM module_afhankelijkheid a JOIN module m ON m.id = a.vereist_module_id WHERE a.module_id = ?",
         (module_id,),
@@ -402,8 +431,9 @@ def module_detail(module_id):
 @app.route("/module/<int:module_id>/update", methods=["POST"])
 def module_update(module_id):
     execute(
-        "UPDATE module SET naam = ?, omschrijving = ?, max_sbu = ?, behaalregel = ?, drempel_percentage = ?, voldoende_cijfer = ?, afhankelijkheid_modus = ? WHERE id = ?",
+        "UPDATE module SET naam = ?, omschrijving = ?, duur_weken = ?, max_sbu = ?, behaalregel = ?, drempel_percentage = ?, voldoende_cijfer = ?, afhankelijkheid_modus = ? WHERE id = ?",
         (request.form.get("naam", "").strip(), request.form.get("omschrijving", "").strip(),
+         request.form.get("duur_weken", 10, type=int),
          request.form.get("max_sbu", 0, type=float), request.form.get("behaalregel", "percentage"),
          request.form.get("drempel_percentage", 80, type=int),
          request.form.get("voldoende_cijfer", 5.5, type=float),
@@ -458,9 +488,8 @@ def module_afhankelijkheid_verwijder(module_id, vereist_id):
 def product_nieuw(module_id):
     naam = request.form.get("naam", "").strip()
     if naam:
-        execute("INSERT INTO onderwijsproduct (module_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
-                (module_id, naam, request.form.get("omschrijving", "").strip(),
-                 request.form.get("sbu", 0, type=float)))
+        execute("INSERT INTO onderwijsproduct (module_id, naam, omschrijving) VALUES (?,?,?)",
+                (module_id, naam, request.form.get("omschrijving", "").strip()))
     return redirect(url_for("module_detail", module_id=module_id))
 
 
@@ -474,16 +503,17 @@ def product_detail(product_id):
     doelen = query("SELECT pd.*, md.omschrijving AS module_doel_omschrijving, md.soort AS module_doel_soort "
                    "FROM product_doel pd LEFT JOIN module_doel md ON md.id = pd.module_doel_id "
                    "WHERE pd.product_id = ? ORDER BY pd.soort, pd.omschrijving", (product_id,))
+    lessen = query("SELECT * FROM les WHERE product_id = ? ORDER BY naam", (product_id,))
     module_doelen = query("SELECT * FROM module_doel WHERE module_id = ? ORDER BY soort, omschrijving", (module["id"],))
     return render_template("product.html", product=product, module=module, traject=traject,
-                           doelen=doelen, module_doelen=module_doelen)
+                           doelen=doelen, lessen=lessen, sbu_totaal=product_sbu(product_id),
+                           module_doelen=module_doelen)
 
 
 @app.route("/product/<int:product_id>/update", methods=["POST"])
 def product_update(product_id):
-    execute("UPDATE onderwijsproduct SET naam = ?, omschrijving = ?, sbu = ? WHERE id = ?",
-            (request.form.get("naam", "").strip(), request.form.get("omschrijving", "").strip(),
-             request.form.get("sbu", 0, type=float), product_id))
+    execute("UPDATE onderwijsproduct SET naam = ?, omschrijving = ? WHERE id = ?",
+            (request.form.get("naam", "").strip(), request.form.get("omschrijving", "").strip(), product_id))
     return redirect(url_for("product_detail", product_id=product_id))
 
 
@@ -492,6 +522,32 @@ def product_verwijder(product_id):
     module_id = query("SELECT module_id FROM onderwijsproduct WHERE id = ?", (product_id,), one=True)["module_id"]
     execute("DELETE FROM onderwijsproduct WHERE id = ?", (product_id,))
     return redirect(url_for("module_detail", module_id=module_id))
+
+
+@app.route("/product/<int:product_id>/les/nieuw", methods=["POST"])
+def les_nieuw(product_id):
+    naam = request.form.get("naam", "").strip()
+    if naam:
+        execute("INSERT INTO les (product_id, naam, omschrijving, sbu) VALUES (?,?,?,?)",
+                (product_id, naam, request.form.get("omschrijving", "").strip(),
+                 request.form.get("sbu", 0, type=float)))
+    return redirect(url_for("product_detail", product_id=product_id))
+
+
+@app.route("/les/<int:les_id>/update", methods=["POST"])
+def les_update(les_id):
+    execute("UPDATE les SET naam = ?, omschrijving = ?, sbu = ? WHERE id = ?",
+            (request.form.get("naam", "").strip(), request.form.get("omschrijving", "").strip(),
+             request.form.get("sbu", 0, type=float), les_id))
+    product_id = query("SELECT product_id FROM les WHERE id = ?", (les_id,), one=True)["product_id"]
+    return redirect(url_for("product_detail", product_id=product_id))
+
+
+@app.route("/les/<int:les_id>/verwijder", methods=["POST"])
+def les_verwijder(les_id):
+    product_id = query("SELECT product_id FROM les WHERE id = ?", (les_id,), one=True)["product_id"]
+    execute("DELETE FROM les WHERE id = ?", (les_id,))
+    return redirect(url_for("product_detail", product_id=product_id))
 
 
 @app.route("/product/<int:product_id>/doel/nieuw", methods=["POST"])
@@ -557,6 +613,7 @@ def docent_beoordeel(student_id, traject_id):
                 (student_id, p["id"]), one=True,
             )
             p["doelen"] = query("SELECT * FROM product_doel WHERE product_id = ? ORDER BY soort, omschrijving", (p["id"],))
+            p["sbu"] = product_sbu(p["id"])
             for pd in p["doelen"]:
                 pd["beoordeling"] = query(
                     "SELECT voldoende FROM product_doel_beoordeling WHERE student_id = ? AND product_doel_id = ?",
@@ -648,6 +705,7 @@ def student_traject_detail(traject_id):
                 "SELECT * FROM beoordeling WHERE student_id = ? AND product_id = ?",
                 (g.gebruiker["id"], p["id"]), one=True,
             )
+            p["sbu"] = product_sbu(p["id"])
         modules.append({"node": n, "producten": producten})
     return render_template("student_traject.html", traject=traject, modules=modules, modules_index=modules_index)
 

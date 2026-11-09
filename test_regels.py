@@ -58,21 +58,43 @@ class TrajectTestCase(unittest.TestCase):
         mod = self.sql("SELECT * FROM module WHERE naam = 'Nettestmodule'")
         self.assertEqual(len(mod), 1)
         mid = mod[0]["id"]
-        self.client.post(f"/module/{mid}/product/nieuw", data={"naam": "Les A", "sbu": "12"}, follow_redirects=True)
+        self.client.post(f"/module/{mid}/product/nieuw", data={"naam": "Linux Server 1"}, follow_redirects=True)
+        pid = self.sql("SELECT id FROM onderwijsproduct WHERE module_id = ?", (mid,))[0]["id"]
+        self.client.post(f"/product/{pid}/les/nieuw", data={"naam": "Les A", "sbu": "12"}, follow_redirects=True)
         self.client.post(f"/module/{mid}/doel/nieuw", data={"soort": "leerdoel", "omschrijving": "Doel X"}, follow_redirects=True)
         # persistentie: opnieuw lezen via nieuwe verbinding
         rows = self.sql("SELECT * FROM onderwijsproduct WHERE module_id = ?", (mid,))
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["sbu"], 12.0)
+        lessen = self.sql("SELECT * FROM les WHERE product_id = ?", (pid,))
+        self.assertEqual(len(lessen), 1)
+        self.assertEqual(lessen[0]["sbu"], 12.0)
         self.assertEqual(len(self.sql("SELECT * FROM module_doel WHERE module_id = ?", (mid,))), 1)
+
+    def test_les_sbu_bepaalt_product_en_modulesbu(self):
+        self.login(1)
+        self.client.post("/traject/1/module/nieuw", data={"naam": "LesSBU", "max_sbu": "20"}, follow_redirects=True)
+        mid = self.sql("SELECT id FROM module WHERE naam = 'LesSBU'")[0]["id"]
+        self.client.post(f"/module/{mid}/product/nieuw", data={"naam": "Netwerken"}, follow_redirects=True)
+        pid = self.sql("SELECT id FROM onderwijsproduct WHERE module_id = ?", (mid,))[0]["id"]
+        self.client.post(f"/product/{pid}/les/nieuw", data={"naam": "Les 1", "sbu": "6"})
+        self.client.post(f"/product/{pid}/les/nieuw", data={"naam": "Les 2", "sbu": "9"})
+        r = self.client.get(f"/module/{mid}")
+        self.assertIn(b"Som van alle lessen: <strong>15.0</strong>", r.data)
+        self.assertNotIn(b"overschrijden de maximale SBU", r.data)
+        # derde les duwt de som over de 20 SBU van de module
+        self.client.post(f"/product/{pid}/les/nieuw", data={"naam": "Les 3", "sbu": "8"})
+        r = self.client.get(f"/module/{mid}")
+        self.assertIn(b"overschrijden de maximale SBU", r.data)
 
     def test_sbu_waarschuwing_bij_overschrijding(self):
         self.login(1)
         self.client.post("/traject/1/module/nieuw", data={"naam": "SBUmod", "max_sbu": "10"},
                          follow_redirects=True)
         mid = self.sql("SELECT id FROM module WHERE naam = 'SBUmod'")[0]["id"]
-        self.client.post(f"/module/{mid}/product/nieuw", data={"naam": "Grote les", "sbu": "25"},
+        self.client.post(f"/module/{mid}/product/nieuw", data={"naam": "Groot product"},
                          follow_redirects=True)
+        pid = self.sql("SELECT id FROM onderwijsproduct WHERE module_id = ?", (mid,))[0]["id"]
+        self.client.post(f"/product/{pid}/les/nieuw", data={"naam": "Zware les", "sbu": "25"})
         r = self.client.get(f"/module/{mid}")
         self.assertIn(b"overschrijden de maximale SBU", r.data)
         r = self.client.get("/traject/1")

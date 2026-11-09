@@ -2,14 +2,44 @@
 {% block content %}
 <p class="kruimel"><a href="{{ url_for('module_detail', module_id=module.id) }}">← Module: {{ module.naam }}</a></p>
 <h1>Onderwijsproduct: {{ product.naam }}</h1>
+<p class="meta">Een onderwijsproduct is een samenhangende verzameling lessen binnen de module "{{ module.naam }}". Totaal SBU: <strong>{{ sbu_totaal }}</strong>.</p>
 
 {% if g.gebruiker.rol == 'ontwerper' %}
 <form method="post" action="{{ url_for('product_update', product_id=product.id) }}" class="kaart">
   <h2>Gegevens</h2>
   <label>Naam <input name="naam" value="{{ product.naam }}" required></label>
   <label>Omschrijving <input name="omschrijving" value="{{ product.omschrijving }}"></label>
-  <label>SBU <input name="sbu" type="number" step="0.5" min="0" value="{{ product.sbu }}"></label>
   <button type="submit">Opslaan</button>
+</form>
+{% endif %}
+
+<h2>Lessen</h2>
+<table class="tabel">
+  <tr><th>Les</th><th>Omschrijving</th><th>SBU</th>{% if g.gebruiker.rol == 'ontwerper' %}<th></th>{% endif %}</tr>
+  {% for l in lessen %}
+  <tr>
+    <td>{{ l.naam }}</td>
+    <td>{{ l.omschrijving }}</td>
+    <td>{{ l.sbu }}</td>
+    {% if g.gebruiker.rol == 'ontwerper' %}
+    <td>
+      <form method="post" action="{{ url_for('les_verwijder', les_id=l.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Nog geen lessen.</td></tr>
+  {% endfor %}
+</table>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('les_nieuw', product_id=product.id) }}" class="kaart">
+  <h3>Les toevoegen</h3>
+  <label>Naam <input name="naam" required></label>
+  <label>Omschrijving <input name="omschrijving"></label>
+  <label>SBU <input name="sbu" type="number" step="0.5" min="0" value="0"></label>
+  <button type="submit">Toevoegen</button>
 </form>
 {% endif %}
 
