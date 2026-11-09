@@ -7,7 +7,7 @@
   <tr>
     <td>{{ t.naam }}</td>
     <td>{{ t.aantal_studenten }}</td>
-    <td><a class="btn klein" href="{{ url_for('docent_traject', traject_id=t.id) }}>Openen</a></td>
+    <td><a class="btn klein" href="{{ url_for('docent_traject', traject_id=t.id) }}">Openen</a></td>
   </tr>
   {% else %}
   <tr><td colspan="3">Nog geen leertrajecten.</td></tr>
