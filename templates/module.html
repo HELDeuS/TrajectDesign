@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kruimel"><a href="{{ url_for('traject_detail', traject_id=traject.id) }}">← {{ traject.naam }}</a></p>
+<h1>Module: {{ module.naam }}</h1>
+
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('module_update', module_id=module.id) }}" class="kaart">
+  <h2>Modulegegevens</h2>
+  <label>Naam <input name="naam" value="{{ module.naam }}" required></label>
+  <label>Omschrijving <input name="omschrijving" value="{{ module.omschrijving }}"></label>
+  <label>Max. SBU <input name="max_sbu" type="number" step="0.5" min="0" value="{{ module.max_sbu }}"></label>
+  <label>Behaalregel
+    <select name="behaalregel">
+      <option value="percentage" {% if module.behaalregel == 'percentage' %}selected{% endif %}>Percentage onderwijsproducten voldoende</option>
+      <option value="doelen" {% if module.behaalregel == 'doelen' %}selected{% endif %}>Leerdoelen en -uitkomsten van de module behalen</option>
+    </select>
+  </label>
+  <label>Drempelpercentage <input name="drempel_percentage" type="number" min="0" max="100" value="{{ module.drempel_percentage }}"></label>
+  <label>Voldoende-cijfer <input name="voldoende_cijfer" type="number" step="0.1" min="1" max="10" value="{{ module.voldoende_cijfer }}"></label>
+  <label>Afhankelijkheid
+    <select name="afhankelijkheid_modus">
+      <option value="alle" {% if module.afhankelijkheid_modus == 'alle' %}selected{% endif %}>Alle vereiste modules behaald</option>
+      <option value="minstens_een" {% if module.afhankelijkheid_modus == 'minstens_een' %}selected{% endif %}>Ten minste één vereiste module behaald</option>
+    </select>
+  </label>
+  <button type="submit">Opslaan</button>
+</form>
+{% endif %}
+
+<div class="kaart">
+  <h2>SBU</h2>
+  <p>Som van onderwijsproducten: <strong>{{ sbu_totaal }}</strong> van maximaal <strong>{{ module.max_sbu }}</strong> SBU.</p>
+  {% if sbu_overschreden %}<p class="waarschuwing">⚠ De onderwijsproducten overschrijden de maximale SBU van deze module.</p>{% endif %}
+</div>
+
+<h2>Leerdoelen en -uitkomsten van de module</h2>
+<table class="tabel">
+  <tr><th>Soort</th><th>Omschrijving</th><th>Gekoppeld aan onderwijsproductdoelen</th><th></th></tr>
+  {% for d in doelen %}
+  <tr>
+    <td>{{ 'Leerdoel' if d.soort == 'leerdoel' else 'Leeruitkomst' }}</td>
+    <td>{{ d.omschrijving }}</td>
+    <td>
+      {% set gekoppeld = [] %}
+      {% for p in producten %}{% for pd in p.doelen %}{% if pd.module_doel_id == d.id %}{% set _ = gekoppeld.append(p.naam) %}{% endif %}{% endfor %}{% endfor %}
+      {{ gekoppeld | join(', ') if gekoppeld else '—' }}
+    </td>
+    <td>
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('module_doel_verwijder', doel_id=d.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Nog geen leerdoelen of -uitkomsten.</td></tr>
+  {% endfor %}
+</table>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('module_doel_nieuw', module_id=module.id) }}" class="kaart">
+  <h3>Doel of uitkomst toevoegen</h3>
+  <label>Soort
+    <select name="soort">
+      <option value="leerdoel">Leerdoel</option>
+      <option value="leeruitkomst">Leeruitkomst</option>
+    </select>
+  </label>
+  <label>Omschrijving <input name="omschrijving" required></label>
+  <button type="submit">Toevoegen</button>
+</form>
+{% endif %}
+
+<h2>Onderwijsproducten</h2>
+<table class="tabel">
+  <tr><th>Naam</th><th>SBU</th><th>Doelen</th><th></th></tr>
+  {% for p in producten %}
+  <tr>
+    <td><a href="{{ url_for('product_detail', product_id=p.id) }}">{{ p.naam }}</a></td>
+    <td>{{ p.sbu }}</td>
+    <td>{{ p.doelen | length }}</td>
+    <td>
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('product_verwijder', product_id=p.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Nog geen onderwijsproducten.</td></tr>
+  {% endfor %}
+</table>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('product_nieuw', module_id=module.id) }}" class="kaart">
+  <h3>Onderwijsproduct toevoegen</h3>
+  <label>Naam <input name="naam" required></label>
+  <label>Omschrijving <input name="omschrijving"></label>
+  <label>SBU <input name="sbu" type="number" step="0.5" min="0" value="0"></label>
+  <button type="submit">Toevoegen</button>
+</form>
+{% endif %}
+
+<h2>Afhankelijkheden</h2>
+<p class="meta">Deze module mag gevolgd worden als
+  {% if module.afhankelijkheid_modus == 'alle' %}<strong>alle</strong>{% else %}<strong>ten minste één</strong>{% endif %}
+  van de volgende modules behaald is:</p>
+<table class="tabel">
+  <tr><th>Vereiste module</th><th></th></tr>
+  {% for a in afhankelijkheden %}
+  <tr>
+    <td><a href="{{ url_for('module_detail', module_id=a.id) }}">{{ a.naam }}</a></td>
+    <td>
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('module_afhankelijkheid_verwijder', module_id=module.id, vereist_id=a.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="2">Geen afhankelijkheden: de module is direct te volgen.</td></tr>
+  {% endfor %}
+</table>
+{% if g.gebruiker.rol == 'ontwerper' and andere_modules %}
+<form method="post" action="{{ url_for('module_afhankelijkheid_nieuw', module_id=module.id) }}" class="kaart">
+  <h3>Afhankelijkheid toevoegen</h3>
+  <label>Vereiste module
+    <select name="vereist_module_id">
+      {% for m in andere_modules %}<option value="{{ m.id }}">{{ m.naam }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Toevoegen</button>
+</form>
+<form method="post" action="{{ url_for('module_verwijder', module_id=module.id) }}" class="kaart"
+      onsubmit="return confirm('Module inclusief onderwijsproducten verwijderen?');">
+  <button type="submit" class="gevaar">Module verwijderen</button>
+</form>
+{% endif %}
+{% endblock %}

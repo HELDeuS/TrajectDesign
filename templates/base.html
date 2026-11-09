@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrajectDesign – leertraject ontwerpen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="brand"><a href="{{ url_for('index') }}">TrajectDesign</a></div>
+  <nav>
+    {% if g.gebruiker.rol == 'ontwerper' %}<a href="{{ url_for('index') }}">Leertrajecten</a>{% endif %}
+    {% if g.gebruiker.rol == 'docent' %}<a href="{{ url_for('docent_overzicht') }}">Beoordelen</a>{% endif %}
+    {% if g.gebruiker.rol == 'student' %}<a href="{{ url_for('student_trajecten') }}">Mijn leertraject</a>{% endif %}
+  </nav>
+  <div class="gebruiker">
+    <span>{{ g.gebruiker.naam }} ({{ g.gebruiker.rol }})</span>
+    <a class="btn klein" href="{{ url_for('uitloggen') }}">Wissel van gebruiker</a>
+  </div>
+</header>
+<main>
+  {% with berichten = get_flashed_messages() %}
+    {% for b in berichten %}<div class="flash">{{ b }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

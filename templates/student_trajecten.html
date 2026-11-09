@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mijn leertrajecten</h1>
+<table class="tabel">
+  <tr><th>Leertraject</th><th></th></tr>
+  {% for t in trajecten %}
+  <tr>
+    <td>{{ t.naam }}</td>
+    <td><a class="btn klein" href="{{ url_for('student_traject_detail', traject_id=t.id) }}">Voortgang bekijken</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="2">Je bent nog aan geen leertraject gekoppeld.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

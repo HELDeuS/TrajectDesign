@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kruimel"><a href="{{ url_for('module_detail', module_id=module.id) }}">← Module: {{ module.naam }}</a></p>
+<h1>Onderwijsproduct: {{ product.naam }}</h1>
+
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('product_update', product_id=product.id) }}" class="kaart">
+  <h2>Gegevens</h2>
+  <label>Naam <input name="naam" value="{{ product.naam }}" required></label>
+  <label>Omschrijving <input name="omschrijving" value="{{ product.omschrijving }}"></label>
+  <label>SBU <input name="sbu" type="number" step="0.5" min="0" value="{{ product.sbu }}"></label>
+  <button type="submit">Opslaan</button>
+</form>
+{% endif %}
+
+<h2>Leerdoelen en -uitkomsten van dit onderwijsproduct</h2>
+<table class="tabel">
+  <tr><th>Soort</th><th>Omschrijving</th><th>Gekoppeld aan module-doel</th><th></th></tr>
+  {% for d in doelen %}
+  <tr>
+    <td>{{ 'Leerdoel' if d.soort == 'leerdoel' else 'Leeruitkomst' }}</td>
+    <td>{{ d.omschrijving }}</td>
+    <td>
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('product_doel_koppel', doel_id=d.id) }}" class="inline">
+        <select name="module_doel_id">
+          <option value="">— niet gekoppeld —</option>
+          {% for md in module_doelen %}
+          <option value="{{ md.id }}" {% if d.module_doel_id == md.id %}selected{% endif %}>{{ md.soort }}: {{ md.omschrijving }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="klein">Koppelen</button>
+      </form>
+      {% else %}
+        {{ d.module_doel_omschrijving if d.module_doel_omschrijving else '—' }}
+      {% endif %}
+    </td>
+    <td>
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('product_doel_verwijder', doel_id=d.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Nog geen doelen voor dit onderwijsproduct.</td></tr>
+  {% endfor %}
+</table>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('product_doel_nieuw', product_id=product.id) }}" class="kaart">
+  <h3>Doel of uitkomst toevoegen</h3>
+  <label>Soort
+    <select name="soort">
+      <option value="leerdoel">Leerdoel</option>
+      <option value="leeruitkomst">Leeruitkomst</option>
+    </select>
+  </label>
+  <label>Omschrijving <input name="omschrijving" required></label>
+  <label>Koppel aan module-doel
+    <select name="module_doel_id">
+      <option value="">— nog niet koppelen —</option>
+      {% for md in module_doelen %}
+      <option value="{{ md.id }}">{{ md.soort }}: {{ md.omschrijving }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Toevoegen</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Beoordelen</h1>
+<table class="tabel">
+  <tr><th>Leertraject</th><th>Studenten</th><th></th></tr>
+  {% for t in trajecten %}
+  <tr>
+    <td>{{ t.naam }}</td>
+    <td>{{ t.aantal_studenten }}</td>
+    <td><a class="btn klein" href="{{ url_for('docent_traject', traject_id=t.id) }}>Openen</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3">Nog geen leertrajecten.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

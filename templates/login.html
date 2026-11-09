@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Kies een gebruiker</h1>
+<p>Deze omgeving kent drie rollen: <strong>ontwerper</strong> (leertrajecten ontwerpen en aanpassen),
+<strong>docent</strong> (resultaten beoordelen) en <strong>student</strong> (eigen voortgang bekijken).</p>
+<form method="post" class="kaart">
+  {% for gbr in gebruikers %}
+    <label class="radio">
+      <input type="radio" name="gebruiker_id" value="{{ gbr.id }}" {% if loop.first %}checked{% endif %}>
+      {{ gbr.naam }} <em>({{ gbr.rol }})</em>
+    </label>
+  {% endfor %}
+  <button type="submit">Inloggen</button>
+</form>
+{% endblock %}
