@@ -9,6 +9,7 @@
 <body>
 <header>
   <div class="brand"><a href="{{ url_for('index') }}">TrajectDesign</a></div>
+  {% if g.get('gebruiker') %}
   <nav>
     {% if g.gebruiker.rol == 'ontwerper' %}<a href="{{ url_for('index') }}">Leertrajecten</a>{% endif %}
     {% if g.gebruiker.rol == 'docent' %}<a href="{{ url_for('docent_overzicht') }}">Beoordelen</a>{% endif %}
@@ -18,6 +19,7 @@
     <span>{{ g.gebruiker.naam }} ({{ g.gebruiker.rol }})</span>
     <a class="btn klein" href="{{ url_for('uitloggen') }}">Wissel van gebruiker</a>
   </div>
+  {% endif %}
 </header>
 <main>
   {% with berichten = get_flashed_messages() %}
