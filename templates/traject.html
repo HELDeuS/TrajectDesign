@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ traject.naam }}</h1>
+<p>{{ traject.omschrijving }}</p>
+
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('traject_update', traject_id=traject.id) }}" class="kaart">
+  <h2>Leertraject aanpassen</h2>
+  <label>Naam <input name="naam" value="{{ traject.naam }}" required></label>
+  <label>Omschrijving <input name="omschrijving" value="{{ traject.omschrijving }}"></label>
+  <button type="submit">Opslaan</button>
+</form>
+
+<form method="post" action="{{ url_for('module_nieuw', traject_id=traject.id) }}" class="kaart">
+  <h2>Module toevoegen</h2>
+  <label>Naam <input name="naam" required></label>
+  <label>Omschrijving <input name="omschrijving"></label>
+  <label>Max. SBU <input name="max_sbu" type="number" step="0.5" min="0" value="40"></label>
+  <label>Behaalregel
+    <select name="behaalregel">
+      <option value="percentage">Percentage onderwijsproducten voldoende</option>
+      <option value="doelen">Leerdoelen en -uitkomsten van de module behalen</option>
+    </select>
+  </label>
+  <label>Drempelpercentage <input name="drempel_percentage" type="number" min="0" max="100" value="80"></label>
+  <label>Voldoende-cijfer <input name="voldoende_cijfer" type="number" step="0.1" min="1" max="10" value="5.5"></label>
+  <label>Afhankelijkheid
+    <select name="afhankelijkheid_modus">
+      <option value="alle">Alle vereiste modules behaald</option>
+      <option value="minstens_een">Ten minste één vereiste module behaald</option>
+    </select>
+  </label>
+  <button type="submit">Module aanmaken</button>
+</form>
+
+<form method="post" action="{{ url_for('traject_verwijder', traject_id=traject.id) }}" class="kaart"
+      onsubmit="return confirm('Leertraject inclusief modules en resultaten verwijderen?');">
+  <button type="submit" class="gevaar">Leertraject verwijderen</button>
+</form>
+{% endif %}
+
+<h2>Modules en afhankelijkheden</h2>
+{% set lagen = {} %}
+{% for node in nodes %}
+  {% if lagen.update({node.diepte: (lagen.get(node.diepte, []) + [node])}) %}{% endif %}
+{% endfor %}
+<div class="graf">
+  {% for diepte in lagen.keys() | sort %}
+  <div class="laag">
+    <div class="laag-label">Niveau {{ diepte + 1 }}</div>
+    {% for node in lagen[diepte] %}
+    <div class="module-kaart">
+      <h3><a href="{{ url_for('module_detail', module_id=node.module.id) }}">{{ node.module.naam }}</a></h3>
+      <p class="meta">
+        SBU: {{ node.sbu_totaal }} / {{ node.max_sbu }}
+        {% if node.sbu_overschreden %}<span class="waarschuwing">⚠ maximale SBU overschreden</span>{% endif %}
+      </p>
+      {% if node.module.behaalregel == 'percentage' %}
+        <p class="meta">Behaling: {{ node.module.drempel_percentage }}% onderwijsproducten voldoende (cijfer ≥ {{ node.module.voldoende_cijfer }})</p>
+      {% else %}
+        <p class="meta">Behaling: alle leerdoelen en -uitkomsten behaald (productresultaten tellen niet mee)</p>
+      {% endif %}
+      {% if node.vereisten %}
+        <p class="meta">
+          Vereist:
+          {% for v in node.vereisten %}<a href="{{ url_for('module_detail', module_id=v) }}">{{ modules_index[v].naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+          {% if node.module.afhankelijkheid_modus == 'minstens_een' %}(ten minste één behaald){% else %}(alle behaald){% endif %}
+        </p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>Nog geen modules in dit leertraject.</p>
+  {% endfor %}
+</div>
+
+<h2>Deelnemers</h2>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('traject_deelnemer_toevoegen', traject_id=traject.id) }}" class="kaart">
+  <label>Student toevoegen
+    <select name="student_id">
+      {% for s in alle_studenten %}<option value="{{ s.id }}">{{ s.naam }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Toevoegen</button>
+</form>
+{% endif %}
+<table class="tabel">
+  <tr><th>Student</th><th></th></tr>
+  {% for s in deelnemers %}
+  <tr>
+    <td>{{ s.naam }}</td>
+    <td>
+      {% if g.gebruiker.rol == 'docent' %}
+        <a class="btn klein" href="{{ url_for('docent_beoordeel', student_id=s.id, traject_id=traject.id) }}">Beoordelen</a>
+      {% endif %}
+      {% if g.gebruiker.rol == 'ontwerper' %}
+      <form method="post" action="{{ url_for('traject_deelnemer_verwijder', traject_id=traject.id, student_id=s.id) }}" class="inline">
+        <button type="submit" class="gevaar klein">Verwijderen</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="2">Nog geen studenten gekoppeld.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

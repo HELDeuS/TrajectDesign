@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kruimel"><a href="{{ url_for('docent_traject', traject_id=traject.id) }}">← {{ traject.naam }}</a></p>
+<h1>Beoordelen: {{ student.naam }}</h1>
+
+{% for m in modules %}
+<div class="kaart">
+  <h2>{{ m.module.naam }} <span class="status">{{ m.status }}</span></h2>
+  <p class="meta">
+    Behaalregel:
+    {% if m.module.behaalregel == 'percentage' %}
+      {{ m.module.drempel_percentage }}% onderwijsproducten voldoende (cijfer ≥ {{ m.module.voldoende_cijfer }})
+    {% else %}
+      alle leerdoelen en -uitkomsten behaald (productresultaten tellen niet mee)
+    {% endif %}
+  </p>
+
+  <h3>Onderwijsproducten</h3>
+  {% for p in m.producten %}
+  <div class="product-blok">
+    <h4>{{ p.naam }} <span class="meta">({{ p.sbu }} SBU)</span></h4>
+    <form method="post" action="{{ url_for('beoordeling_opslaan') }}" class="inline-form">
+      <input type="hidden" name="student_id" value="{{ student.id }}">
+      <input type="hidden" name="product_id" value="{{ p.id }}">
+      <input type="hidden" name="traject_id" value="{{ traject.id }}">
+      <label>Cijfer
+        <input name="cijfer" type="number" step="0.1" min="1" max="10"
+               value="{{ p.beoordeling.cijfer if p.beoordeling else '' }}"
+               placeholder="1.0 – 10.0">
+      </label>
+      <button type="submit" class="klein">Opslaan</button>
+      {% if p.beoordeling %}
+      <span class="meta">beoordeeld op {{ p.beoordeling.datum }} —
+        {{ 'voldoende' if p.beoordeling.cijfer >= m.module.voldoende_cijfer else 'onvoldoende' }}</span>
+      {% endif %}
+    </form>
+
+    {% if p.doelen %}
+    <table class="tabel">
+      <tr><th>Doel / uitkomst van dit product</th><th>Voldoende?</th><th></th></tr>
+      {% for pd in p.doelen %}
+      <tr>
+        <td>{{ pd.omschrijving }}</td>
+        <td>
+          <form method="post" action="{{ url_for('product_doel_beoordelen') }}" class="inline">
+            <input type="hidden" name="student_id" value="{{ student.id }}">
+            <input type="hidden" name="product_doel_id" value="{{ pd.id }}">
+            <input type="hidden" name="traject_id" value="{{ traject.id }}">
+            <label class="radio"><input type="checkbox" name="voldoende" {% if pd.beoordeling and pd.beoordeling.voldoende %}checked{% endif %} onchange="this.form.submit()"> voldoende</label>
+          </form>
+        </td>
+        <td class="meta">{{ 'gekoppeld aan module-doel' if pd.module_doel_id else '' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="meta">Nog geen onderwijsproducten in deze module.</p>
+  {% endfor %}
+
+  {% if m.module.behaalregel == 'doelen' or m.doelen %}
+  <h3>Leerdoelen en -uitkomsten van de module</h3>
+  <p class="meta">Bij behaalregel "doelen" worden deze beoordelingen gebruikt en tellen productresultaten niet mee.</p>
+  <table class="tabel">
+    <tr><th>Doel / uitkomst</th><th>Voldoende?</th></tr>
+    {% for md in m.doelen %}
+    <tr>
+      <td>{{ md.omschrijving }}</td>
+      <td>
+        <form method="post" action="{{ url_for('module_doel_beoordelen') }}" class="inline">
+          <input type="hidden" name="student_id" value="{{ student.id }}">
+          <input type="hidden" name="module_doel_id" value="{{ md.id }}">
+          <input type="hidden" name="traject_id" value="{{ traject.id }}">
+          <label class="radio"><input type="checkbox" name="voldoende" {% if md.beoordeling and md.beoordeling.voldoende %}checked{% endif %} onchange="this.form.submit()"> voldoende</label>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="2">Nog geen doelen op moduleniveau.</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

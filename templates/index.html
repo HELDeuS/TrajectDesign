@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Leertrajecten</h1>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<form method="post" action="{{ url_for('traject_nieuw') }}" class="kaart">
+  <h2>Nieuw leertraject</h2>
+  <label>Naam <input name="naam" required></label>
+  <label>Omschrijving <input name="omschrijving"></label>
+  <button type="submit">Aanmaken</button>
+</form>
+{% endif %}
+<table class="tabel">
+  <tr><th>Leertraject</th><th>Omschrijving</th><th>Modules</th><th></th></tr>
+  {% for t in trajecten %}
+  <tr>
+    <td><a href="{{ url_for('traject_detail', traject_id=t.traject.id) }}">{{ t.traject.naam }}</a></td>
+    <td>{{ t.traject.omschrijving }}</td>
+    <td>{{ t.aantal_modules }}</td>
+    <td><a class="btn klein" href="{{ url_for('traject_detail', traject_id=t.traject.id) }}>Openen</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Nog geen leertrajecten.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

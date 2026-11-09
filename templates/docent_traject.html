@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kruimel"><a href="{{ url_for('docent_overzicht') }}">← Beoordelen</a></p>
+<h1>{{ traject.naam }}</h1>
+<table class="tabel">
+  <tr><th>Student</th><th>Status per module</th><th></th></tr>
+  {% for s in studenten %}
+  <tr>
+    <td>{{ s.naam }}</td>
+    <td>
+      {% for naam, status in s.overzicht %}
+        <span class="status {{ 's-bezig' if status == 'Bezig' else 's-behaald' if status == 'Behaald' else 's-geblokkeerd' if status == 'Geblokkeerd' else 's-niet' }}">{{ naam }}: {{ status }}</span>
+      {% else %}
+        <em>Geen modules</em>
+      {% endfor %}
+    </td>
+    <td><a class="btn klein" href="{{ url_for('docent_beoordeel', student_id=s.id, traject_id=traject.id) }}">Beoordelen</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3">Nog geen studenten gekoppeld aan dit leertraject.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

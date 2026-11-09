@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ traject.naam }}</h1>
+<p>Je voortgang per module. Geblokkeerde modules worden pas beschikbaar zodra de vereiste modules behaald zijn.</p>
+
+{% set lagen = {} %}
+{% for m in modules %}
+  {% if lagen.update({m.node.diepte: (lagen.get(m.node.diepte, []) + [m])}) %}{% endif %}
+{% endfor %}
+<div class="graf">
+  {% for diepte in lagen.keys() | sort %}
+  <div class="laag">
+    <div class="laag-label">Niveau {{ diepte + 1 }}</div>
+    {% for m in lagen[diepte] %}
+    <div class="module-kaart status-{{ m.node.status_key }}">
+      <h3>{{ m.node.module.naam }}</h3>
+      <p><span class="status {{ 's-behaald' if m.node.status_key == 'behaald' else 's-bezig' if m.node.status_key == 'bezig' else 's-geblokkeerd' if m.node.status_key == 'geblokkeerd' else 's-niet' }}">{{ m.node.status }}</span></p>
+      <p class="meta">SBU: {{ m.node.sbu_totaal }} uur</p>
+      {% if m.node.vereisten %}
+      <p class="meta">Vereist: {% for v in m.node.vereisten %}{{ modules_index[v].naam }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+      {% endif %}
+      <table class="tabel">
+        <tr><th>Onderwijsproduct</th><th>Cijfer</th></tr>
+        {% for p in m.producten %}
+        <tr>
+          <td>{{ p.naam }}</td>
+          <td>
+            {% if p.beoordeling %}
+              {{ p.beoordeling.cijfer }}
+              {% if p.beoordeling.cijfer >= m.node.module.voldoende_cijfer %}<span class="status s-behaald">voldoende</span>
+              {% else %}<span class="status s-niet">onvoldoende</span>{% endif %}
+            {% else %}<span class="meta">—</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="meta">Nog geen onderwijsproducten.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>Nog geen modules in dit leertraject.</p>
+  {% endfor %}
+</div>
+{% endblock %}
