@@ -26,7 +26,25 @@ pip install -r requirements.txt
 python app.py
 ```
 
-De applicatie draait op http://127.0.0.1:5000. De SQLite-database (`traject.db`) wordt bij de eerste start aangemaakt en gevuld met demogegevens (gebruikers, een voorbeeldleertraject met modules, onderwijsproducten en leerdoelen).
+De applicatie luistert standaard op **alle netwerkinterfaces** (`0.0.0.0`) op poort 5000, zodat hij vanaf andere machines in het netwerk bereikbaar is (bijv. op een Ubuntu-server via `http://<server-ip>:5000`). Configuratie via omgevingsvariabelen:
+
+- `HOST` – bind-adres (standaard `0.0.0.0`)
+- `PORT` – poort (standaard `5000`)
+- `DEBUG` – debug-modus aan/uit (standaard uit)
+- `TRAJECT_DB` – pad naar de SQLite-database (standaard `traject.db` naast `app.py`)
+
+De SQLite-database wordt bij de eerste start aangemaakt en gevuld met demogegevens (gebruikers, een voorbeeldleertraject met modules, onderwijsproducten en leerdoelen).
+
+### Productie-installatie op Ubuntu (optioneel)
+
+De ingebouwde Flask-server is geschikt voor ontwikkeling en klein gebruik. Voor productie kun je beter een WSGI-server gebruiken, bijvoorbeeld met `gunicorn`:
+
+```bash
+pip install gunicorn
+gunicorn --bind 0.0.0.0:5000 app:app
+```
+
+Zorg dat de poort openstaat in de firewall (`sudo ufw allow 5000/tcp`) en dat verkeer van buiten alleen via een beveiligde route (bijv. een reverse proxy met HTTPS) loopt.
 
 ## Opbouw
 
