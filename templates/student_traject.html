@@ -1,46 +1,53 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ traject.naam }}</h1>
-<p>Je voortgang per module. Geblokkeerde modules worden pas beschikbaar zodra de vereiste modules behaald zijn.</p>
 
-{% set lagen = {} %}
-{% for m in modules %}
-  {% if lagen.update({m.node.diepte: (lagen.get(m.node.diepte, []) + [m])}) %}{% endif %}
-{% endfor %}
-<div class="graf">
-  {% for diepte in lagen.keys() | sort %}
-  <div class="laag">
-    <div class="laag-label">Niveau {{ diepte + 1 }}</div>
-    {% for m in lagen[diepte] %}
-    <div class="module-kaart status-{{ m.node.status_key }}">
-      <h3>{{ m.node.module.naam }}</h3>
-      <p><span class="status {{ 's-behaald' if m.node.status_key == 'behaald' else 's-bezig' if m.node.status_key == 'bezig' else 's-geblokkeerd' if m.node.status_key == 'geblokkeerd' else 's-niet' }}">{{ m.node.status }}</span></p>
-      <p class="meta">SBU: {{ m.node.sbu_totaal }} uur</p>
-      {% if m.node.vereisten %}
-      <p class="meta">Vereist: {% for v in m.node.vereisten %}{{ modules_index[v].naam }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-      {% endif %}
-      <table class="tabel">
-        <tr><th>Onderwijsproduct</th><th>Cijfer</th></tr>
-        {% for p in m.producten %}
-        <tr>
-          <td>{{ p.naam }}</td>
-          <td>
-            {% if p.beoordeling %}
-              {{ p.beoordeling.cijfer }}
-              {% if p.beoordeling.cijfer >= m.node.module.voldoende_cijfer %}<span class="status s-behaald">voldoende</span>
-              {% else %}<span class="status s-niet">onvoldoende</span>{% endif %}
-            {% else %}<span class="meta">—</span>{% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="2" class="meta">Nog geen onderwijsproducten.</td></tr>
-        {% endfor %}
-      </table>
-    </div>
-    {% endfor %}
+<div class="kaart voortgangskaart">
+  <h2>Voortgang</h2>
+  <div class="voortgangsbalk">
+    <div class="voortgang-vulling" style="width: {{ voortgang }}%"></div>
   </div>
-  {% else %}
-  <p>Nog geen modules in dit leertraject.</p>
-  {% endfor %}
+  <p class="meta"><strong>{{ voortgang }}%</strong> — {{ behaald }} van {{ totaal_modules }} modules behaald</p>
 </div>
+
+<h2>Moduleoverzicht</h2>
+{% from "_graf.html" import teken %}
+{% if modules %}
+<div class="graf-container kaart">
+  {{ teken(modules | map(attribute='node') | list, pos, pijlen, graf_breedte, graf_hoogte, modules_index, true) }}
+</div>
+<p class="meta">Geblokkeerde modules worden pas beschikbaar zodra de vereiste modules behaald zijn.</p>
+{% else %}
+<p>Nog geen modules in dit leertraject.</p>
+{% endif %}
+
+<h2>Resultaten per module</h2>
+{% for m in modules %}
+<div class="kaart module-resultaat">
+  <h3>{{ m.node.module.naam }}
+    <span class="status {{ 's-behaald' if m.node.status_key == 'behaald' else 's-bezig' if m.node.status_key == 'bezig' else 's-geblokkeerd' if m.node.status_key == 'geblokkeerd' else 's-niet' }}">{{ m.node.status }}</span>
+  </h3>
+  <p class="meta">{{ m.node.module.duur_weken }} weken · {{ m.node.sbu_totaal }} SBU
+    {% if m.node.vereisten %} · vereist: {% for v in m.node.vereisten %}{{ modules_index[v].naam }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+  </p>
+  <table class="tabel">
+    <tr><th>Onderwijsproduct</th><th>SBU</th><th>Cijfer</th></tr>
+    {% for p in m.producten %}
+    <tr>
+      <td>{{ p.naam }}</td>
+      <td>{{ p.sbu }}</td>
+      <td>
+        {% if p.beoordeling %}
+          {{ p.beoordeling.cijfer }}
+          {% if p.beoordeling.cijfer >= m.node.module.voldoende_cijfer %}<span class="status s-behaald">voldoende</span>
+          {% else %}<span class="status s-niet">onvoldoende</span>{% endif %}
+        {% else %}<span class="meta">—</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="meta">Nog geen onderwijsproducten.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endfor %}
 {% endblock %}

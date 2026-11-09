@@ -98,7 +98,7 @@ class TrajectTestCase(unittest.TestCase):
         r = self.client.get(f"/module/{mid}")
         self.assertIn(b"overschrijden de maximale SBU", r.data)
         r = self.client.get("/traject/1")
-        self.assertIn(b"maximale SBU overschreden", r.data)
+        self.assertIn(b"SBU overschreden", r.data)
 
     def test_product_doel_koppeling_aan_module_doel(self):
         self.login(1)

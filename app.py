@@ -278,6 +278,42 @@ def traject_graf(traject_id, student_id=None):
     return nodes
 
 
+GRAF_BREEDTE = 230
+GRAF_HOOGTE = 120
+GRAF_MARGE = 30
+
+
+def graf_layout(nodes):
+    """Berekent x/y-posities en pijlen voor de SVG-graf."""
+    lagen = {}
+    for n in nodes:
+        lagen.setdefault(n["diepte"], []).append(n)
+    per_laag = max((len(v) for v in lagen.values()), default=0)
+    breedste = max(per_laag, 1)
+    pos = {}
+    for diepte, laag_nodes in lagen.items():
+        for i, n in enumerate(laag_nodes):
+            pos[n["module"]["id"]] = {
+                "x": GRAF_MARGE + i * (GRAF_BREEDTE + GRAF_MARGE),
+                "y": GRAF_MARGE + diepte * (GRAF_HOOGTE + 60),
+            }
+    by_id = {n["module"]["id"]: n for n in nodes}
+    pijlen = []
+    for n in nodes:
+        for v in n["vereisten"]:
+            if v in pos and n["module"]["id"] in pos:
+                pijlen.append({
+                    "x1": pos[v]["x"] + GRAF_BREEDTE / 2,
+                    "y1": pos[v]["y"] + GRAF_HOOGTE,
+                    "x2": pos[n["module"]["id"]]["x"] + GRAF_BREEDTE / 2,
+                    "y2": pos[n["module"]["id"]]["y"],
+                })
+    breedte = GRAF_MARGE * 2 + breedste * GRAF_BREEDTE + (breedste - 1) * GRAF_MARGE
+    hoogste = max((n["diepte"] for n in nodes), default=0)
+    hoogte = GRAF_MARGE * 2 + (hoogste + 1) * GRAF_HOOGTE + hoogste * 60
+    return pos, pijlen, breedte, hoogte
+
+
 # ---------- sessie / login ----------
 
 @app.before_request
@@ -341,6 +377,7 @@ def traject_detail(traject_id):
         abort(404)
     nodes = traject_graf(traject_id)
     nodes.sort(key=lambda n: n["diepte"])
+    pos, pijlen, graf_breedte, graf_hoogte = graf_layout(nodes)
     modules_index = {m["id"]: m for m in query("SELECT * FROM module WHERE traject_id = ?", (traject_id,))}
     deelnemers = query(
         "SELECT g.* FROM traject_deelnemer d JOIN gebruiker g ON g.id = d.student_id WHERE d.traject_id = ? ORDER BY g.naam",
@@ -348,6 +385,7 @@ def traject_detail(traject_id):
     )
     alle_studenten = query("SELECT * FROM gebruiker WHERE rol = 'student' ORDER BY naam")
     return render_template("traject.html", traject=traject, nodes=nodes, modules_index=modules_index,
+                           pos=pos, pijlen=pijlen, graf_breedte=graf_breedte, graf_hoogte=graf_hoogte,
                            deelnemers=deelnemers, alle_studenten=alle_studenten)
 
 
@@ -695,7 +733,10 @@ def student_traject_detail(traject_id):
         abort(403)
     nodes = traject_graf(traject_id, g.gebruiker["id"])
     nodes.sort(key=lambda n: n["diepte"])
+    pos, pijlen, graf_breedte, graf_hoogte = graf_layout(nodes)
     modules_index = {m["id"]: m for m in query("SELECT * FROM module WHERE traject_id = ?", (traject_id,))}
+    behaald = sum(1 for n in nodes if n["status_key"] == "behaald")
+    voortgang = round(100 * behaald / len(nodes)) if nodes else 0
     modules = []
     for n in nodes:
         m = n["module"]
@@ -707,7 +748,9 @@ def student_traject_detail(traject_id):
             )
             p["sbu"] = product_sbu(p["id"])
         modules.append({"node": n, "producten": producten})
-    return render_template("student_traject.html", traject=traject, modules=modules, modules_index=modules_index)
+    return render_template("student_traject.html", traject=traject, modules=modules, modules_index=modules_index,
+                           pos=pos, pijlen=pijlen, graf_breedte=graf_breedte, graf_hoogte=graf_hoogte,
+                           voortgang=voortgang, behaald=behaald, totaal_modules=len(nodes))
 
 
 if __name__ == "__main__":

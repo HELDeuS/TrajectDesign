@@ -1,0 +1,32 @@
+{% macro teken(nodes, pos, pijlen, breedte, hoogte, modules_index, met_status) %}
+<svg class="graf-svg" viewBox="0 0 {{ breedte }} {{ hoogte }}" width="100%" height="{{ hoogte }}" role="img" aria-label="Afhankelijkheidsgrafiek van modules">
+  <defs>
+    <marker id="pijlkop" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#9aa4af"></path>
+    </marker>
+  </defs>
+  {% for p in pijlen %}
+  <line x1="{{ p.x1 }}" y1="{{ p.y1 }}" x2="{{ p.x2 }}" y2="{{ p.y2 }}" class="graf-pijl" marker-end="url(#pijlkop)"></line>
+  {% endfor %}
+  {% for n in nodes %}
+  {% set c = pos[n.module.id] %}
+  <a href="{{ url_for('module_detail', module_id=n.module.id) }}" class="graf-node {{ 'status-' ~ n.status_key if met_status and n.status_key else '' }}">
+    <rect x="{{ c.x }}" y="{{ c.y }}" width="230" height="120" rx="10"
+          class="{{ 'graf-rect-status' if met_status and n.status_key else 'graf-rect' }}"></rect>
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 28 }}" class="graf-titel">{{ n.module.naam[:28] }}</text>
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 50 }}" class="graf-sub">{{ n.sbu_totaal }} SBU van {{ n.module.max_sbu }}</text>
+    {% if met_status and n.status %}
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 74 }}" class="graf-sub graf-status-{{ n.status_key }}">{{ n.status }}</text>
+    {% else %}
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 74 }}" class="graf-sub">
+      {{ 'doelen behalen' if n.module.behaalregel == 'doelen' else n.module.drempel_percentage ~ '% producten' }}
+    </text>
+    {% endif %}
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 96 }}" class="graf-sub">{{ n.module.duur_weken }} weken</text>
+    {% if n.sbu_overschreden %}
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 112 }}" class="graf-waarschuwing">⚠ SBU overschreden</text>
+    {% endif %}
+  </a>
+  {% endfor %}
+</svg>
+{% endmacro %}
