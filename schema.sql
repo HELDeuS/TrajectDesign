@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS module (
   behaalregel TEXT NOT NULL DEFAULT 'percentage' CHECK (behaalregel IN ('percentage','doelen')),
   drempel_percentage INTEGER NOT NULL DEFAULT 80,
   voldoende_cijfer REAL NOT NULL DEFAULT 5.5,
-  afhankelijkheid_modus TEXT NOT NULL DEFAULT 'alle' CHECK (afhankelijkheid_modus IN ('alle','minstens_een'))
+  afhankelijkheid_modus TEXT NOT NULL DEFAULT 'alle' CHECK (afhankelijkheid_modus IN ('alle','minstens_een')),
+  positie INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS module_afhankelijkheid (

@@ -45,6 +45,13 @@ def _migrate(db):
     kolommen = {r[1] for r in db.execute("PRAGMA table_info(module)")}
     if "duur_weken" not in kolommen:
         db.execute("ALTER TABLE module ADD COLUMN duur_weken INTEGER NOT NULL DEFAULT 10")
+    kolommen = {r[1] for r in db.execute("PRAGMA table_info(module)")}
+    if "positie" not in kolommen:
+        db.execute("ALTER TABLE module ADD COLUMN positie INTEGER NOT NULL DEFAULT 0")
+        for t in db.execute("SELECT DISTINCT traject_id FROM module").fetchall():
+            ids = [r[0] for r in db.execute("SELECT id FROM module WHERE traject_id = ? ORDER BY id", (t[0],))]
+            for i, mid in enumerate(ids):
+                db.execute("UPDATE module SET positie = ? WHERE id = ?", (i * 10, mid))
     product_kolommen = {r[1] for r in db.execute("PRAGMA table_info(onderwijsproduct)")}
     if "sbu" in product_kolommen:
         producten = db.execute("SELECT id, sbu FROM onderwijsproduct WHERE sbu > 0").fetchall()
@@ -141,6 +148,20 @@ def _seed(db):
 
 
 # ---------- bedrijfslogica ----------
+
+def maakt_cyclus(module_id, vereist_id):
+    """Waar als vereist_id (transitief) module_id vereist; dan zou een afhankelijkheid een cyclus geven."""
+    gezien = {module_id}
+    stap = [vereist_id]
+    while stap:
+        huidig = stap.pop()
+        if huidig in gezien:
+            return True
+        gezien.add(huidig)
+        stap.extend(r["vereist_module_id"] for r in query(
+            "SELECT vereist_module_id FROM module_afhankelijkheid WHERE module_id = ?", (huidig,)))
+    return False
+
 
 def product_voldoende(beoordeling, module):
     return beoordeling is not None and beoordeling["cijfer"] >= module["voldoende_cijfer"]
@@ -288,6 +309,8 @@ def graf_layout(nodes):
     lagen = {}
     for n in nodes:
         lagen.setdefault(n["diepte"], []).append(n)
+    for laag in lagen.values():
+        laag.sort(key=lambda n: (n["module"].get("positie") or 0, n["module"]["naam"]))
     per_laag = max((len(v) for v in lagen.values()), default=0)
     breedste = max(per_laag, 1)
     pos = {}
@@ -423,16 +446,18 @@ def module_nieuw(traject_id):
     if not naam:
         flash("Vul een modulenaam in.")
         return redirect(url_for("traject_detail", traject_id=traject_id))
+    positie = query("SELECT COALESCE(MAX(positie), 0) + 10 AS p FROM module WHERE traject_id = ?",
+                    (traject_id,), one=True)["p"]
     m_id = execute(
-        "INSERT INTO module (traject_id, naam, omschrijving, duur_weken, max_sbu, behaalregel, drempel_percentage, voldoende_cijfer, afhankelijkheid_modus) "
-        "VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO module (traject_id, naam, omschrijving, duur_weken, max_sbu, behaalregel, drempel_percentage, voldoende_cijfer, afhankelijkheid_modus, positie) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)",
         (traject_id, naam, request.form.get("omschrijving", "").strip(),
          request.form.get("duur_weken", 10, type=int),
          request.form.get("max_sbu", 0, type=float),
          request.form.get("behaalregel", "percentage"),
          request.form.get("drempel_percentage", 80, type=int),
          request.form.get("voldoende_cijfer", 5.5, type=float),
-         request.form.get("afhankelijkheid_modus", "alle")),
+         request.form.get("afhankelijkheid_modus", "alle"), positie),
     )
     return redirect(url_for("module_detail", module_id=m_id))
 
@@ -508,9 +533,40 @@ def module_doel_verwijder(doel_id):
 def module_afhankelijkheid_nieuw(module_id):
     vereist = request.form.get("vereist_module_id", type=int)
     if vereist and vereist != module_id:
-        execute("INSERT OR IGNORE INTO module_afhankelijkheid (module_id, vereist_module_id) VALUES (?,?)",
-                (module_id, vereist))
+        if maakt_cyclus(module_id, vereist):
+            flash("Deze afhankelijkheid zou een cyclus geven en is niet toegevoegd.")
+        else:
+            execute("INSERT OR IGNORE INTO module_afhankelijkheid (module_id, vereist_module_id) VALUES (?,?)",
+                    (module_id, vereist))
     return redirect(url_for("module_detail", module_id=module_id))
+
+
+@app.route("/traject/<int:traject_id>/graf/verplaats", methods=["POST"])
+def module_verplaats(traject_id):
+    """Sleepactie: afhankelijkheid maken (op andere module) of volgorde binnen de laag wijzigen."""
+    module_id = request.form.get("module_id", type=int)
+    module = query("SELECT * FROM module WHERE id = ? AND traject_id = ?", (module_id, traject_id), one=True)
+    if not module:
+        abort(404)
+    doel = request.form.get("doel_module_id", type=int)
+    if doel:
+        if doel == module_id:
+            return redirect(url_for("traject_detail", traject_id=traject_id))
+        if query("SELECT 1 FROM module WHERE id = ? AND traject_id = ?", (doel, traject_id), one=True):
+            if maakt_cyclus(module_id, doel):
+                flash("De module kan niet achter een module geplaatst worden die deze module zelf vereist.")
+            else:
+                execute("INSERT OR IGNORE INTO module_afhankelijkheid (module_id, vereist_module_id) VALUES (?,?)",
+                        (module_id, doel))
+        return redirect(url_for("traject_detail", traject_id=traject_id))
+
+    volgorde = [int(x) for x in request.form.get("volgorde", "").split(",") if x.strip().isdigit()]
+    if volgorde:
+        ids = {r["id"] for r in query("SELECT id FROM module WHERE traject_id = ?", (traject_id,))}
+        if all(mid in ids for mid in volgorde):
+            for i, mid in enumerate(volgorde):
+                execute("UPDATE module SET positie = ? WHERE id = ?", (i * 10, mid))
+    return redirect(url_for("traject_detail", traject_id=traject_id))
 
 
 @app.route("/module/<int:module_id>/afhankelijkheid/<int:vereist_id>/verwijder", methods=["POST"])

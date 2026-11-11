@@ -126,6 +126,9 @@ html.donker .flash { background: #4a3a0d; border-color: #7a6420; color: #f5e9c8;
 .graf-rect { fill: var(--kaart); stroke: var(--rand-invoer); stroke-width: 2; }
 .graf-rect:hover { stroke: var(--accent); }
 .graf-node { cursor: pointer; text-decoration: none; }
+svg[data-sleepbaar] .graf-node { cursor: grab; }
+.graf-node.sleepend { cursor: grabbing; }
+.graf-node.sleepend .graf-rect, .graf-node.sleepend .graf-rect-status { stroke: var(--accent); stroke-width: 3; }
 .graf-titel { font-size: 15px; font-weight: 700; fill: var(--tekst); }
 .graf-sub { font-size: 12px; fill: var(--meta); }
 .graf-waarschuwing { font-size: 12px; font-weight: 700; fill: #e2554b; }

@@ -203,6 +203,62 @@ class TrajectTestCase(unittest.TestCase):
             "student_id": 3, "product_id": 1, "traject_id": 1, "cijfer": ""})
         self.assertEqual(len(self.sql("SELECT * FROM beoordeling WHERE student_id = 3 AND product_id = 1")), 0)
 
+    # ---------- graf: slepen, volgorde en cycli ----------
+
+    def test_module_slepen_maakt_afhankelijkheid(self):
+        self.login(1)
+        m4 = self.sql("SELECT id FROM module WHERE naam = 'Nettestmodule'")
+        if not m4:
+            self.client.post("/traject/1/module/nieuw", data={"naam": "Nettestmodule"}, follow_redirects=True)
+            m4 = self.sql("SELECT id FROM module WHERE naam = 'Nettestmodule'")
+        mid = m4[0]["id"]
+        r = self.client.post("/traject/1/graf/verplaats",
+                             data={"module_id": mid, "doel_module_id": 2}, follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        rows = self.sql("SELECT * FROM module_afhankelijkheid WHERE module_id = ? AND vereist_module_id = 2", (mid,))
+        self.assertEqual(len(rows), 1)
+
+    def test_module_slepen_cyclus_wordt_geweigerd(self):
+        self.login(1)
+        # module 2 vereist module 1; module 1 achter module 2 slepen is een cyclus
+        r = self.client.post("/traject/1/graf/verplaats",
+                             data={"module_id": 1, "doel_module_id": 2}, follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        rows = self.sql("SELECT * FROM module_afhankelijkheid WHERE module_id = 1 AND vereist_module_id = 2")
+        self.assertEqual(len(rows), 0)
+        self.assertIn(b"kan niet achter", r.data)
+
+    def test_afhankelijkheid_form_cyclus_wordt_geweigerd(self):
+        self.login(1)
+        self.client.post("/module/1/afhankelijkheid/nieuw", data={"vereist_module_id": 3}, follow_redirects=True)
+        rows = self.sql("SELECT * FROM module_afhankelijkheid WHERE module_id = 1 AND vereist_module_id = 3")
+        self.assertEqual(len(rows), 0)
+
+    def test_volgorde_binnen_laag_worden_opgeslagen(self):
+        self.login(1)
+        # module 2 en 3 liggen in de demo in laag 1; volgorde omdraaien
+        r = self.client.post("/traject/1/graf/verplaats",
+                             data={"module_id": 3, "volgorde": "3,2"}, follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        posities = {m["id"]: m["positie"] for m in self.sql("SELECT id, positie FROM module WHERE traject_id = 1")}
+        self.assertLess(posities[3], posities[2])
+
+    def test_volgorde_layout_bepaalt_plaats_in_graf(self):
+        self.login(1)
+        with traject_app.app.test_request_context():
+            nodes = traject_app.traject_graf(1)
+            nodes.sort(key=lambda n: n["diepte"])
+            pos, pijlen, breedte, hoogte = traject_app.graf_layout(nodes)
+        self.assertEqual(len(pos), len(nodes))
+        self.assertGreater(len(pijlen), 0)
+        # modules in dezelfde laag krijgen oplopende x bij oplopende positie
+        per_laag = {}
+        for n in nodes:
+            per_laag.setdefault(n["diepte"], []).append(n)
+        for laag in per_laag.values():
+            xs = [pos[n["module"]["id"]]["x"] for n in laag]
+            self.assertEqual(xs, sorted(xs))
+
     def test_product_doel_beoordeling_blijft_bestaan(self):
         self.login(2)
         self.client.post("/docent/product-doel", data={

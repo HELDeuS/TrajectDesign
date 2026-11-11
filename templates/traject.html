@@ -53,9 +53,14 @@
 {% from "_graf.html" import teken %}
 {% if nodes %}
 <div class="graf-container kaart">
-  {{ teken(nodes, pos, pijlen, graf_breedte, graf_hoogte, modules_index, false) }}
+  {{ teken(nodes, pos, pijlen, graf_breedte, graf_hoogte, modules_index, false,
+           sleepbaar=(g.gebruiker.rol == 'ontwerper'),
+           verplaats_url=url_for('module_verplaats', traject_id=traject.id)) }}
 </div>
-<p class="meta">Pijlen geven aan welke modules vooraf moeten zijn behaald. Klik op een module om deze te bewerken.</p>
+<p class="meta">Pijlen geven aan welke modules vooraf moeten zijn behaald. Klik op een module om deze te bewerken.{% if g.gebruiker.rol == 'ontwerper' %} Sleep een module op een andere module om deze ervan afhankelijk te maken; sleep naar een leeg punt om de volgorde binnen de rij te wijzigen.{% endif %}</p>
+{% if g.gebruiker.rol == 'ontwerper' %}
+<script src="{{ url_for('static', filename='graf-sleep.js') }}"></script>
+{% endif %}
 {% else %}
 <p>Nog geen modules in dit leertraject.</p>
 {% endif %}

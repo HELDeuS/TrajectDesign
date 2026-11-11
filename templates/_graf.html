@@ -1,5 +1,6 @@
-{% macro teken(nodes, pos, pijlen, breedte, hoogte, modules_index, met_status) %}
-<svg class="graf-svg" viewBox="0 0 {{ breedte }} {{ hoogte }}" width="100%" height="{{ hoogte }}" role="img" aria-label="Afhankelijkheidsgrafiek van modules">
+{% macro teken(nodes, pos, pijlen, breedte, hoogte, modules_index, met_status, sleepbaar=false, verplaats_url=none) %}
+<svg class="graf-svg" viewBox="0 0 {{ breedte }} {{ hoogte }}" width="100%" height="{{ hoogte }}" role="img" aria-label="Afhankelijkheidsgrafiek van modules"
+     data-marge="30" data-breedte="230" data-hoogte="120" {% if sleepbaar %}data-sleepbaar="1" data-verplaats-url="{{ verplaats_url }}"{% endif %}>
   <defs>
     <marker id="pijlkop" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
       <path d="M0,0 L10,4 L0,8 z" fill="#9aa4af"></path>
@@ -10,7 +11,8 @@
   {% endfor %}
   {% for n in nodes %}
   {% set c = pos[n.module.id] %}
-  <a href="{{ url_for('module_detail', module_id=n.module.id) }}" class="graf-node {{ 'status-' ~ n.status_key if met_status and n.status_key else '' }}">
+  <a href="{{ url_for('module_detail', module_id=n.module.id) }}" class="graf-node {{ 'status-' ~ n.status_key if met_status and n.status_key else '' }}"
+     data-mid="{{ n.module.id }}" data-x="{{ c.x }}" data-y="{{ c.y }}">
     <rect x="{{ c.x }}" y="{{ c.y }}" width="230" height="120" rx="10"
           class="{{ 'graf-rect-status' if met_status and n.status_key else 'graf-rect' }}"></rect>
     <text x="{{ c.x + 14 }}" y="{{ c.y + 28 }}" class="graf-titel">{{ n.module.naam[:28] }}</text>
@@ -24,7 +26,7 @@
     {% endif %}
     <text x="{{ c.x + 14 }}" y="{{ c.y + 96 }}" class="graf-sub">{{ n.module.duur_weken }} weken</text>
     {% if n.sbu_overschreden %}
-    <text x="{{ c.x + 14 }}" y="{{ c.y + 112 }}" class="graf-waarschuwing">⚠ SBU overschreden</text>
+    <text x="{{ c.x + 14 }}" y="{{ c.y + 112 }}" class="graf-waarschuwing">&#9888; SBU overschreden</text>
     {% endif %}
   </a>
   {% endfor %}
